@@ -6,83 +6,52 @@
 <title>강냉이</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
-  
-  function updateQueueStatus() {
-    const status = {
-      'relaxed': 0,
-      'normal': 0,
-      'busy': 0
+  let ws;
+
+  function initWebSocket() {
+    ws = new WebSocket('ws://localhost:3000'); // 여기서는 로컬호스트의 3000번 포트를 사용합니다.
+
+    ws.onopen = function() {
+      console.log('WebSocket 연결 성립');
     };
 
-    let intervalId = null;
+    ws.onmessage = function(event) {
+      const status = JSON.parse(event.data);
+      updateDisplay(status);
+    };
 
-    function incrementStatus(type) {
-  if (status[type] < 50) { 
-    status[type]++;
-    updateDisplay();
+    ws.onerror = function(error) {
+      console.error('WebSocket 에러 발생', error);
+    };
   }
-}
 
-    function decrementStatus() {
-      for (const key in status) {
-        if (status[key] > 0) {
-          status[key]--;
-        }
-      }
-      updateDisplay();
-    }
-
-  function updateDisplay() {
+  function updateDisplay(status) {
     const maxStatus = Math.max(status.relaxed, status.normal, status.busy);
-    let queueStatus = '데이터 없음'; // "None data"를 "데이터 없음"으로 변경
+    let queueStatus = '데이터 없음';
     if (maxStatus > 0) {
       const statusType = Object.keys(status).find(key => status[key] === maxStatus);
       switch(statusType) {
         case 'relaxed':
-          queueStatus = '여유'; // "Relaxed"를 "여유"로 변경
+          queueStatus = '여유';
           break;
         case 'normal':
-          queueStatus = '보통'; // "Normal"를 "보통"으로 변경
+          queueStatus = '보통';
           break;
         case 'busy':
-          queueStatus = '혼잡'; // "Busy"를 "혼잡"으로 변경
+          queueStatus = '혼잡';
           break;
       }
     }
     document.getElementById('queueStatus').textContent = queueStatus;
   }
 
-    function getCurrentTime() {
-      const now = new Date();
-      return now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-    }
-
-    function updateTime() {
-      document.getElementById('currentTime').textContent = getCurrentTime();
-    }
-
-    return {
-      init: function() {
-        updateTime();
-        intervalId = setInterval(() => {
-          decrementStatus();
-          updateTime();
-        }, 30000);
-        updateDisplay();
-      },
-      increment: incrementStatus
-    };
+  function handleButtonClick(type) {
+    ws.send(JSON.stringify({ action: 'increment', type: type }));
   }
-
-  const queue = updateQueueStatus();
 
   document.addEventListener('DOMContentLoaded', function() {
-    queue.init();
+    initWebSocket();
   });
-
-  function handleButtonClick(type) {
-    queue.increment(type);
-  }
 </script>
 </head>
 <body class="bg-gray-100">
@@ -98,7 +67,7 @@
       <button onclick="handleButtonClick('busy')" class="bg-red-200 hover:bg-red-300 text-red-800 py-2 px-4 rounded">혼잡</button>
     </div>
     <div class="border border-gray-300 p-4 rounded">
-      <p id="queueStatus" class="text-center text-lg">None data</p>
+      <p id="queueStatus" class="text-center text-lg">데이터 없음</p>
     </div>
     <p class="text-sm text-gray-600 mt-2">1줄 이하 여유, 1줄~2줄 보통, 3줄부터 혼잡입니다.</p>
   </div>
